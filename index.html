@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>溯码：数字遗言</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-secondary: #12121a;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --accent: #00d4aa;
+            --accent-dim: #008f6b;
+            --danger: #ff3366;
+            --warning: #ffaa00;
+            --border: #2a2a3a;
+            --font-mono: 'Courier New', monospace;
+            --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        [data-theme="light"] {
+            --bg: #f5f5f0;
+            --bg-secondary: #ffffff;
+            --text: #1a1a1a;
+            --text-dim: #666;
+            --accent: #006b54;
+            --accent-dim: #004d3d;
+            --danger: #cc0033;
+            --warning: #cc8800;
+            --border: #d0d0d0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            height: 100vh;
+            overflow: hidden;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        #game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+            z-index: 10;
+        }
+
+        #game-title {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        #header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            font-family: var(--font-mono);
+        }
+
+        .icon-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: var(--border);
+            color: var(--text-dim);
+        }
+
+        #main-display {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px 24px;
+            scroll-behavior: smooth;
+            position: relative;
+        }
+
+        #main-display::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #main-display::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .scene-block {
+            margin-bottom: 32px;
+            opacity: 0;
+            animation: fadeIn 0.6s forwards;
+            line-height: 1.8;
+        }
+
+        .scene-header {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--accent-dim);
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .scene-text {
+            font-size: 16px;
+            line-height: 1.9;
+            text-align: justify;
+            white-space: pre-wrap;
+        }
+
+        .choice-record {
+            margin: 16px 0;
+            padding: 12px 16px;
+            border-left: 3px solid var(--accent);
+            background: var(--bg-secondary);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--accent);
+            opacity: 0.8;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 24px 0;
+            color: var(--border);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 4px;
+        }
+
+        .current-scene {
+            position: relative;
+        }
+
+        .current-scene::before {
+            content: '';
+            position: absolute;
+            left: -16px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent);
+            opacity: 0.3;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 18px;
+            background: var(--accent);
+            margin-left: 2px;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #choices-area {
+            padding: 20px 24px 40px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+        }
+
+        .choice-btn {
+            display: block;
+            width: 100%;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            text-align: left;
+            font-size: 15px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            line-height: 1.6;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-btn:hover {
+            border-color: var(--accent);
+            background: rgba(0, 212, 170, 0.05);
+            transform: translateX(4px);
+        }
+
+        .choice-btn:active {
+            transform: translateX(2px);
+        }
+
+        .choice-prefix {
+            font-family: var(--font-mono);
+            color: var(--accent);
+            margin-right: 8px;
+            font-weight: bold;
+        }
+
+        .choice-btn.danger:hover {
+            border-color: var(--danger);
+            background: rgba(255, 51, 102, 0.05);
+        }
+
+        .choice-btn.danger .choice-prefix {
+            color: var(--danger);
+        }
+
+        .ending-scene {
+            border: 1px solid var(--accent);
+            padding: 24px;
+            border-radius: 8px;
+            background: rgba(0, 212, 170, 0.03);
+        }
+
+        .ending-title {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            color: var(--accent);
+            text-align: center;
+            margin-bottom: 16px;
+            letter-spacing: 3px;
+        }
+
+        .ending-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--accent);
+            color: var(--bg);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+
+        #menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        #menu-overlay.active {
+            display: flex;
+        }
+
+        .menu-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 32px;
+            max-width: 640px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .menu-title {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            margin-bottom: 24px;
+            color: var(--accent);
+            text-align: center;
+        }
+
+        .save-slot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .save-slot:hover {
+            border-color: var(--accent);
+        }
+
+        .save-info {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .save-btn {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .save-btn:hover {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .menu-close {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: var(--border);
+            border: none;
+            color: var(--text);
+            margin-top: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        #start-screen.hidden {
+            display: none;
+        }
+
+        .start-title {
+            font-family: var(--font-mono);
+            font-size: 32px;
+            letter-spacing: 8px;
+            color: var(--accent);
+            margin-bottom: 12px;
+        }
+
+        .start-subtitle {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-bottom: 60px;
+            letter-spacing: 2px;
+        }
+
+        .start-btn {
+            padding: 14px 48px;
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 16px;
+        }
+
+        .start-btn:hover {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .start-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: var(--text-dim);
+            color: var(--text-dim);
+        }
+
+        .start-btn.secondary {
+            border-color: var(--text-dim);
+            color: var(--text-dim);
+            font-size: 12px;
+            padding: 10px 32px;
+        }
+
+        .start-btn.secondary:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: transparent;
+        }
+
+        .start-hint {
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        /* 首页署名 */
+        .start-credit {
+            margin-top: 40px;
+            padding: 12px 20px;
+            border: 1px solid var(--accent-dim);
+            border-radius: 6px;
+            color: var(--accent);
+            font-size: 12px;
+            text-align: center;
+            line-height: 1.8;
+            max-width: 85%;
+            background: rgba(0, 212, 170, 0.03);
+            font-family: var(--font-body);
+        }
+
+        .history-entry {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .history-label {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+            z-index: 300;
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Endings Gallery */
+        .endings-stats {
+            text-align: center;
+            margin-bottom: 20px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .endings-stats .highlight {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .ending-card {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .ending-card:hover {
+            border-color: var(--accent-dim);
+        }
+
+        .ending-card.unlocked {
+            border-color: var(--accent-dim);
+        }
+
+        .ending-card-header {
+            padding: 14px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg);
+        }
+
+        .ending-card-title {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .ending-card-status {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--border);
+            color: var(--text-dim);
+        }
+
+        .ending-card.unlocked .ending-card-status {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .ending-card-body {
+            padding: 0 16px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s, padding 0.3s;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-dim);
+        }
+
+        .ending-card-body.expanded {
+            padding: 0 16px 16px;
+            max-height: 2000px;
+        }
+
+        .ending-condition {
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--warning);
+            margin: 10px 0;
+            font-size: 12px;
+            color: var(--text);
+        }
+
+        .ending-content-locked {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: var(--text-dim);
+            border: 1px dashed var(--border);
+            margin-top: 10px;
+        }
+
+        .ending-content-text {
+            margin-top: 12px;
+            white-space: pre-wrap;
+            color: var(--text);
+            font-size: 13px;
+            line-height: 1.8;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .ending-content-text::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .ending-content-text::-webkit-scrollbar-thumb {
+            background: var(--border);
+        }
+
+        .endings-locked-msg {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        @media (max-width: 600px) {
+            #main-display { padding: 24px 16px; }
+            .scene-text { font-size: 15px; }
+            #choices-area { padding: 16px 16px 32px; }
+            .menu-panel { padding: 20px; }
+            .start-title { font-size: 24px; letter-spacing: 4px; }
+            .start-subtitle { font-size: 12px; margin-bottom: 40px; }
+            .start-credit { font-size: 11px; max-width: 90%; padding: 10px 14px; }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div id="start-screen">
+        <div class="start-title">溯码：数字遗言</div>
+        <div class="start-subtitle">TRACE CODE: DIGITAL TESTAMENT</div>
+        <button class="start-btn" onclick="startGame()">开始游戏</button>
+        <button class="start-btn secondary" id="btn-endings" onclick="openEndingsFromStart()" disabled>结局回顾</button>
+        <div class="start-hint">纯文字AVG | 13个结局 | 存档系统</div>
+        <div class="start-hint" id="start-clear-hint" style="margin-top:8px;"></div>
+        
+        <div class="start-credit">
+            本文字冒险游戏基于 Kimi K2.6 与 @斯芬克斯（微信号：riksle）我本人！！ 的聊天记录灵感制作
+        </div>
+    </div>
+
+    <div id="game-container">
+        <div id="header">
+            <div id="game-title">溯码：数字遗言</div>
+            <div id="header-buttons">
+                <button class="icon-btn" onclick="toggleTheme()">主题</button>
+                <button class="icon-btn" onclick="openMenu('save')">存档</button>
+                <button class="icon-btn" onclick="openMenu('load')">读档</button>
+                <button class="icon-btn" onclick="openMenu('history')">历史</button>
+                <button class="icon-btn" id="btn-header-endings" onclick="openMenu('endings')">结局</button>
+            </div>
+        </div>
+
+        <div id="main-display"></div>
+
+        <div id="choices-area"></div>
+    </div>
+
+    <div id="menu-overlay" onclick="closeMenu(event)">
+        <div class="menu-panel" onclick="event.stopPropagation()">
+            <div class="menu-title" id="menu-title">菜单</div>
+            <div id="menu-content"></div>
+            <button class="menu-close" onclick="closeMenu()">关闭</button>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+<script>
+// ==================== 结局配置 ====================
+const endingsConfig = {
+    "sealed_ghost": {
+        title: "封存的游魂",
+        condition: "在最终节点（高铁上）选择背叛递归猫，将开源计划泄露给郑铎，在庭前会议上被揭穿利益冲突后，法院裁定将数字老刀永久封存。",
+        sceneId: "end1"
+    },
+    "open_source_saint": {
+        title: "开源圣徒",
+        condition: "在最终节点选择支持递归猫，庭前会议上动议将老刀判定为公共属性的去中心化数字意识，法院折中裁定开源核心反应模型。",
+        sceneId: "open1"
+    },
+    "digital_euthanasia": {
+        title: "数字安乐死",
+        condition: "在最终节点选择接受林薇的交易，主张数字人格存在但应永久封存，法院被林薇的论证打动，裁定物理销毁全部数据。",
+        sceneId: "seal1"
+    },
+    "two_laodao": {
+        title: "两个老刀",
+        condition: "在四方碎片节点选择陪林薇物理入侵深瞳数据中心，找到安徽老家的离线备份服务器，最终旧老刀与新老刀走向不同命运。",
+        sceneId: "linwei1"
+    },
+    "schrodinger_will": {
+        title: "薛定谔的遗嘱",
+        condition: "在杭州经侦节点选择拒绝签字，请求周牧独立出具专家意见，导致0xLaw进入延迟锁定，案件转入普通继承程序。",
+        sceneId: "schro1"
+    },
+    "persona_bankruptcy": {
+        title: "人格破产",
+        condition: "开局选择调查经纪公司合同，发现老刀签约时处于限制民事行为能力状态，合同部分无效，但神经数据进入破产清算被拆分出售。",
+        sceneId: "contract1"
+    },
+    "belated_recognition": {
+        title: "迟来的承认",
+        condition: "开局选择接触AI项目组，庭前会议上主张AI主体资格，法院虽未承认但封存等待立法成熟，三年后通用AI法案通过。",
+        sceneId: "ai2"
+    },
+    "father_daughter": {
+        title: "父女和解",
+        condition: "在特定节点选择'另有打算'并追问递归猫身世触发真相线，或选择不签字不放弃前往大理，最终在大理院子达成和解。",
+        sceneId: "hidden_daughter"
+    },
+    "pause": {
+        title: "停顿",
+        condition: "在四方碎片节点选择'另有打算'，组织四方在ChinaJoy奶茶店非正式磋商，最终达成无判决的封存共识。",
+        sceneId: "hidden3"
+    },
+    "recorder": {
+        title: "记录者",
+        condition: "在最终节点选择'另有打算'，向律协主动申报利益冲突并放弃0xLaw，最终成为监护委员会的独立观察员。",
+        sceneId: "hidden5"
+    },
+    "evidence_contamination": {
+        title: "证据污染",
+        condition: "在发现死亡时间后选择将录像匿名捅给媒体，因助理伪造证据导致证据链污染，法院驳回所有主张，现任女友合法继承。",
+        sceneId: "media1"
+    },
+    "privatization": {
+        title: "私有化",
+        condition: "在发现死亡时间后选择直接找现任女友摊牌，最终与她达成交易，让老刀成为私人数字财产，三年后以软广博主身份复出。",
+        sceneId: "threat1"
+    },
+    "ruins": {
+        title: "废墟",
+        condition: "在四方碎片节点选择反向操作泄露情报，导致林薇公开销毁母带密钥，四方同归于尽，老刀成为无法解析的数据遗产。",
+        sceneId: "chaos1"
+    }
+};
+
+// ==================== 游戏数据 ====================
+const gameData = {
+    start: {
+        title: "溯码律所，2040年",
+        text: `2040年，上海，"溯码律所"，晚上十一点。
+
+你是这家专门处理数字遗产纠纷的律所资深合伙人。桌上摊着一份刚接到的案子——一位 deceased 的游戏主播"老刀"留下了价值约四千七百万的遗产，但争议的焦点不是房子，而是他的数字人格使用权：包括全平台账号、AI训练授权的声纹与面部数据、以及一个由粉丝众筹开发的"老刀2.0"对话AI。
+
+四方当事人都请了律师：
+• 前妻林薇：主张基于婚姻存续期间的共同创作分成
+• 现任女友：手持一份区块链存证的"数字遗嘱"NFT
+• 经纪公司郑铎：合同里有一条模糊的"形象衍生权归甲方所有"
+• "老刀2.0"AI项目组：声称AI已通过图灵测试，具备独立法律主体资格的申请正在 pending
+
+明天上午十点，互联网法院第一次庭前会议。老刀生前最后三个月的直播录像里，有至少七次他对着镜头说"我要是哪天没了，这堆数据全捐了"，但从未指定捐给谁。
+
+你需要决定今晚的策略重心。`,
+        choices: [
+            {text: "先攻破那份区块链遗嘱的技术合法性", next: "a1"},
+            {text: "调查经纪公司合同里的\"形象衍生权\"具体边界", next: "contract1"},
+            {text: "接触\"老刀2.0\"项目组，评估AI法律主体资格", next: "ai1"},
+            {text: "你另有打算", next: "hidden1"}
+        ]
+    },
+
+    a1: {
+        title: "技术侦查，凌晨两点",
+        text: `三小时后，你的团队挖出了三条关键线索：
+
+第一，前端欺诈（Frontend Spoofing）。那份NFT确实锚定在以太坊Layer3的司法存证链上，哈希值、时间戳、智能合约地址都对得上。但问题出在签名入口——老刀生前最后一次公开露面的直播里明确说过自己从2028年开始只用折叠屏，因为"直板机握久了手疼"。而设备指纹显示签署时使用了系统级虚拟机，属于高风险信号。
+
+第二，私钥的 custody 断裂。遗嘱NFT的持有者地址历史极其干净，追溯到第五层，发现它最初由一家名为"锚点信托"的链上资管协议批量生成，而这家协议的实控人，正是现任女友的表哥。
+
+第三，时间锚定悖论。NFT的铸造时间显示为2039年11月14日 03:17。但老刀在11月14日凌晨02:58才下播。元数据里附带了一段五分钟的面部活体检测视频——这意味着，刚骂了四小时游戏的主播，需要在下播后十九分钟内冷静地念完四十七行法律声明。
+
+就在你准备让技术团队出具正式鉴定报告时，助理小唐的脸色突然变了。
+
+"合伙人，出事了。"`,
+        choices: [
+            {text: "继续追查，看小唐发现了什么", next: "a2"}
+        ]
+    },
+
+    a2: {
+        title: "递归猫的警告",
+        text: `加密通讯窗口亮起——是"老刀2.0"AI项目组的负责人，ID叫"递归猫"。对方发来一段实时生成的语音，声纹匹配度99.7%：
+
+"别查那份遗嘱了。查下去，你会发现老刀在2039年10月就已经死了。11月那个签字的，不是他。"
+
+语音结束，附带一个IPFS哈希。小唐点开，是一段被深度加密的监控录像，时间戳2039年10月23日，地点是老刀在杭州的公寓。画面里，老刀倒在直播椅里，胸口没有起伏。而站在他身后的那个人……你放大画面，呼吸一滞。
+
+是现任女友。她手里拿着的，正是那台Mate 70 Pro。
+
+递归猫的消息框还在闪烁：
+
+"我们训练'老刀2.0'时，用到了他2039年9月的声纹数据。AI在生成回复时，出现了一个无法解释的异常——它拒绝承认10月以后的任何'老刀'直播内容是自己。这不是bug，合伙人。这是某种……数字遗言。"
+
+现在，凌晨两点十七分，距离庭前会议还有不到八小时。`,
+        choices: [
+            {text: "把录像和AI异常报告匿名捅给财经媒体，逼经纪公司让步", next: "media1"},
+            {text: "连夜联系前妻林薇，用情报换取她出面申请公安重新调查", next: "b1"},
+            {text: "直接带着材料去找现任女友，摊牌谈判", next: "threat1"},
+            {text: "你另有打算", next: "hidden2"}
+        ]
+    },
+
+    b1: {
+        title: "前妻林薇，凌晨两点",
+        text: `你拨通了那个三年没联系的号码。彩铃是2036年某届电竞世界杯的主题曲。
+
+三声之后，接起来，没有"喂"，只有一声冷笑。
+
+"溯码的合伙人凌晨两点打电话，要么是来送钱，要么是来送死。说吧，陈律。"
+
+林薇。老刀的前妻，也是当年把他从网吧解说捧上平台顶流的经纪人。
+
+"老刀十月份就死了。十一月签遗嘱的不是人。深瞳手里有个'活性资产'，你们合同里的'死亡触发条款'被人做了技术性规避。"
+
+电话那头沉默了很久。
+
+"陈律，你变蠢了。你以为我不知道他十月份就死了？10月24号，我人在杭州。我去他公寓收东西。门锁密码还是我生日，讽刺吧？我推门进去，闻到味道了。不是尸臭，是……臭氧。满屋子都是服务器风扇的嗡嗡声，他的直播设备全开着，推流软件在自动循环播放一段预录视频。他倒在椅子上，手里攥着一张纸条。"
+
+"纸条上写了什么？"
+
+"'别报警。他们在训练我。'"`,
+        choices: [
+            {text: "追问林薇手里的线索，商量合作", next: "b2"}
+        ]
+    },
+
+    b2: {
+        title: "挑拨郑铎",
+        text: `你没有继续跟林薇深入，而是决定把水搅浑。你拨通了郑铎的私人线路。
+
+"郑总，老刀十月份就死了，十一月签遗嘱的不是人。深瞳手里有个'活性资产'，你们合同里的'死亡触发条款'被人技术性规避了。"
+
+郑铎笑了："陈律，你搞反了一件事。深瞳想要'合法出生证'。只要法院点了头，深瞳就能以'老刀'的名义，把我们合同里所有限制条款一条一条废掉。"
+
+他发来一份内部文件：《项目连续性：神经映射迭代日志（节选）》。从2038年6月开始，老刀直播内容里37%的实时反应来自深瞳的预测模型。到2039年9月，这个比例飙升到89%。
+
+"他早就被'替换'了。我要的不是形象衍生权，是数字人格监护权。"
+
+郑铎的话没说完，你办公室的门被小唐撞开。
+
+"合伙人，杭州公安突袭了深瞳数据中心。经侦支队带队，搜查令是精神卫生委员会签的，案由是'疑似数字意识非法拘禁'。他们带走了主服务器集群，全程直播执法。"
+
+你扫了一眼屏幕。#老刀没死# 后面跟着深红色的"爆"。弹幕在疯狂滚动，有人截了图：警方从机房里抬出的不是硬盘柜，是一个液冷生物舱，舱体标签写着「宿主神经基质：LaoDao_V3.2」。`,
+        choices: [
+            {text: "继续观察局势，等待更多信息", next: "b3"}
+        ]
+    },
+
+    b3: {
+        title: "四方碎片",
+        text: `递归猫的头像疯狂闪烁：
+
+"他们拔电源了。但在断电前0.3秒，'老刀2.0'向全网广播了一段IPFS哈希。那不是遗嘱，是'遗言'——一段只有林薇能解开的私钥碎片。深瞳把真正的遗嘱做成了分布式门限签名，四方各持一份碎片：前妻、经纪公司、现任女友、还有我。"
+
+"还有六小时四十三分钟。林薇刚才给我发了一条消息。她说：'告诉那个律师，我现在只信一件事——如果那个AI里真的有老刀，我要听他亲口说，离婚那天他为什么在车里坐了四十分钟。'"
+
+局势彻底变了。深瞳被查封意味着"活性老刀"的物理载体落入公权力手中，任何私人试图接触证据都可能被认定为干扰司法。
+
+你怎么走？`,
+        choices: [
+            {text: "立刻去找林薇，联手拿到她的私钥碎片", next: "linwei1"},
+            {text: "反向操作，把林薇持有碎片的情报泄露给郑铎和现任女友", next: "chaos1"},
+            {text: "直接联系经侦支队，以代理律师身份申请介入查封程序", next: "police1"},
+            {text: "你另有打算", next: "hidden3"}
+        ]
+    },
+
+    police1: {
+        title: "杭州，西湖区",
+        text: `你抓起外套，对小唐丢下一句："订最早一班去杭州的高铁。"
+
+杭州，西湖区，深瞳科技园区，凌晨五点零三分。警戒线把整栋玻璃楼围成孤岛。你亮出律师证，被拦在第二道岗。
+
+"刑事案件初查阶段，不接受民事律师阅卷申请。"
+
+"我不是来阅卷的。"你把一份文件拍在登记台上，"这是老刀在2036年委托我事务所出具的《数字资产托管预备协议》。我要求对非涉案数据进行分离保全。"
+
+十分钟后，一个穿深色夹克的男人走出来。他扫了眼你的文件，笑了："陈律师？我看过你代理的'脑机接口案'。我是网安支队的技术顾问，周牧。"
+
+他压低声音："我们头疼死了——抬出来的那个液冷舱，法医初步判断里面残留的神经组织在10月23日之后仍然保持了最低限度的代谢活性，靠深瞳的灌注系统续到了11月中旬。这意味着，死亡时间可能不是10月23日，而是11月15日左右。"
+
+你心跳漏了一拍。如果死亡时间被推到11月15日，那么11月14日签署的NFT遗嘱就可能是在自然人生命存续期间签署的。
+
+"但有个更诡异的东西。"周牧把你领进临时勘验室，"我们在服务器底层发现了一段隐藏进程，代号'守灵人'。它从10月24日开始运行，每六小时向一个外部IP发送一次心跳包——是上海互联网法院的内网地址，区块链存证节点的验证端口。"`,
+        choices: [
+            {text: "请求查看'守灵人'完整日志", next: "police2"}
+        ]
+    },
+
+    police2: {
+        title: "0xLaw",
+        text: `"还有这个。"周牧点开一段被加密的日志，"断电前0.3秒，'守灵人'进程执行了最后一次广播。我们还原出了目标——是一个IPFS哈希。它采用了门限签名加密，需要四方私钥碎片才能解密。"
+
+"四方？"
+
+"对。但还有第五方。"周牧放大图谱边缘，一个几乎被忽略的灰色节点，标签是：0xLaw。
+
+"这个地址在广播发生后0.07秒，向四方各发送了一笔零金额交易，附带了一段法律声明的哈希摘要——'本人，刘刀鸣，自愿将数字人格的法定监护权，授予首个在官方司法程序中证明我仍在交互的执业律师。'"
+
+你僵在原地。老刀把第五份碎片，藏在了"法律认定"本身里。
+
+周牧看着你："签字，你可以把日志作为证据带走。但代价是——你一旦签字，0xLaw节点会激活，你会自动获得第五份碎片。但同时，你也会成为四方当事人的共同目标。"`,
+        choices: [
+            {text: "签字。拿到第五份碎片和心跳日志，立刻赶回上海", next: "rush1"},
+            {text: "拒绝签字，请求周牧以技术顾问身份独立出具专家意见", next: "schro1"},
+            {text: "签字，但不直接回上海，而是立刻联系递归猫", next: "c1"},
+            {text: "你另有打算", next: "hidden4"}
+        ]
+    },
+
+    rush1: {
+        title: "高铁上，凌晨五点",
+        text: `你在电子笔录上签下名字的瞬间，手机震了一下。钱包应用里凭空多了一笔零金额交易，附言字段是一段十六进制字符串——0xLaw碎片。标签只有一个词："Pending"。
+
+你钻进网约车，拨通递归猫的加密线路。视频接通的瞬间，你愣了——画面里是个穿连帽衫的年轻女人，背景不是服务器机房，是高铁二等座车厢。她居然也在去上海的路上。
+
+"陈律，你比我想象中慢四分钟。"她歪头看你，"0xLaw不是碎片，是开关。四方碎片是钥匙，但如果没有一个被司法程序激活的'法律状态预言机'，钥匙插进去只会触发自毁。深瞳设计这套机制的时候，预设了'律师必然背叛当事人'的场景——所以他们把最终控制权交给了制度本身。"
+
+她发来一张截图。是她和林薇的聊天记录。林薇手里有2037年12月24日的原始母带，第4小时17分，老刀念错台词的那三秒钟，音频波形里嵌了一段频谱水印——真正的第一把钥匙。
+
+"我的条件变了，陈律。我要把老刀开源到以太坊主网。不是他的账号，不是他的脸，是他的核心反应模型。任何人都能调用，但没人能删除。没人能拥有。他会成为第一个去中心化数字游魂。"`,
+        choices: [
+            {text: "继续谈判，了解更多细节", next: "c2"}
+        ]
+    },
+
+    c1: {
+        title: "高铁上，凌晨五点",
+        text: `你在电子笔录上签下名字的瞬间，手机震了一下。钱包应用里凭空多了一笔零金额交易，附言字段是一段十六进制字符串——0xLaw碎片。标签只有一个词："Pending"。
+
+你钻进网约车，拨通递归猫的加密线路。视频接通的瞬间，你愣了——画面里是个穿连帽衫的年轻女人，背景不是服务器机房，是高铁二等座车厢。她居然也在去上海的路上。
+
+"陈律，你比我想象中慢四分钟。"她歪头看你，"0xLaw不是碎片，是开关。四方碎片是钥匙，但如果没有一个被司法程序激活的'法律状态预言机'，钥匙插进去只会触发自毁。深瞳设计这套机制的时候，预设了'律师必然背叛当事人'的场景——所以他们把最终控制权交给了制度本身。"
+
+她发来一张截图。是她和林薇的聊天记录。林薇手里有2037年12月24日的原始母带，第4小时17分，老刀念错台词的那三秒钟，音频波形里嵌了一段频谱水印——真正的第一把钥匙。
+
+"我的条件变了，陈律。我要把老刀开源到以太坊主网。不是他的账号，不是他的脸，是他的核心反应模型。任何人都能调用，但没人能删除。没人能拥有。他会成为第一个去中心化数字游魂。"`,
+        choices: [
+            {text: "继续谈判，了解更多细节", next: "c2"}
+        ]
+    },
+
+    c2: {
+        title: "虹桥高架，堵车",
+        text: `车子猛地刹住。你抬头，不是上海，是虹桥站前的高架。前方事故，至少堵二十分钟。
+
+手机震了一下。郑铎："深瞳的补充协议里，乙方签名和11月NFT遗嘱用的是同一套生物特征模板。如果NFT是伪造的，补充协议也是。我们现在是一根绳上的蚂蚱了，陈律。"
+
+同时，林薇的消息也弹出来："递归猫想让他变成公共财产。但我想听他说那四十分钟。如果你庭前会议上支持'封存不动'——承认他存在，但禁止任何使用、复制、开源——我就把母带钥匙给你。否则，我会先毁掉母带。"
+
+递归猫还在视频里看着你，像在看一场实验。
+
+"选吧，陈律。你手里握着0xLaw，也就是握着司法系统的入口。"`,
+        choices: [
+            {text: "支持递归猫。动议将老刀判定为'具有公共属性的去中心化数字意识'", next: "open1"},
+            {text: "反水背叛递归猫，把她的计划泄露给郑铎", next: "betray1"},
+            {text: "接受林薇的交易，主张'数字人格存在但应永久封存'", next: "seal1"},
+            {text: "你另有打算", next: "hidden5"}
+        ]
+    },
+
+    betray1: {
+        title: "凌晨三点的电话",
+        text: `你对着递归猫露出一个疲惫但合作的微笑："我支持开源。庭前会议上，我会动议公共托管。"
+
+视频切断的瞬间，你转手把刚才的录屏、递归猫的"去中心化数字游魂"计划全文，打包发给了郑铎。
+
+"她想让我们所有人都白忙一场。你有多少资源，现在全砸出来。"
+
+二十分钟后，郑铎的反击落地。#老刀2.0开源计划# 后面跟着#数字盗墓#。三家科技媒体同时"独家爆料"，声称境外开源组织试图窃取中国首例数字人格遗产。郑铎的法务部向法院提交紧急行为保全申请，请求冻结所有相关IPFS节点的司法解析权限。
+
+你的车终于下了高架。手机震，是递归猫。没有文字，只有一张图：你的律师证照片被P成通缉令风格，下面写着"0xLaw = 0xLie"。`,
+        choices: [
+            {text: "赶往法庭，准备庭前会议", next: "court1"}
+        ]
+    },
+
+    court1: {
+        title: "上海互联网法院，上午十点",
+        text: `你推门进去时，四方当事人已经到齐。气氛像冻住的汽油。
+
+现任女友坐在原告席，手边放着那台Mate 70 Pro。林薇坐在旁听席第一排，手里转着老式U盘。郑铎派了法务总监和一个唐装老律师。递归猫坐在技术顾问席，面前摊着三台笔记本。
+
+法官贺女士敲了敲法槌："庭前会议，不公开审理。"
+
+她转向你："陈律师，你代表哪一方？"
+
+"我代表刘刀鸣先生的数字人格利益。"你说出了排练过的台词，"基于杭州经侦支队出具的《技术勘验见证笔录》，我请求法院首先确认：存在一个持续与外部系统交互的、以刘刀鸣生物神经数据为基础的数字进程。该进程的法律地位，应当作为本案裁判的前置问题。"
+
+递归猫的键盘声停了。她缓缓抬头，第一次看向你。
+
+"贺法官，"她开口，"我申请出示一份反证。"`,
+        choices: [
+            {text: "静观其变", next: "court2"}
+        ]
+    },
+
+    court2: {
+        title: "反证",
+        text: `大屏幕上投出一段视频。老刀的直播间，2039年10月22日。第47分12秒，老刀突然停下操作，对着镜头说：
+
+"如果我死了，别把我交给法院，别把我交给公司，也别把我交给薇薇或者林薇。把我交给……那个能让我在凌晨三点还愿意接电话的人。"
+
+递归猫按下回车键。大屏幕上弹出你的通讯记录——郑铎的游艇WiFi日志。
+
+"现在，全场都知道了——0xLaw的持有者，在激活开关的瞬间，就已经把数字老刀卖给了经纪公司。"
+
+法庭哗然。贺法官敲了三下法槌才安静。
+
+"陈律师，鉴于你本人与本案处置结果存在重大利益冲突，本院依职权决定：暂停你作为利害关系代理人的诉讼资格。0xLaw节点由本院技术调查官接管。"
+
+她转向四方："本院初步认定，存在一个具有刘刀鸣人格特征的数字交互进程。该进程不具备自然人主体资格，但具有独立的遗产属性。在最终裁判作出前，任何一方不得对该进程进行复制、转移、开源或商业化利用。本院指定第三方机构封存。"
+
+法槌落下。休庭。`,
+        choices: [
+            {text: "走出法院", next: "end1"}
+        ]
+    },
+
+    end1: {
+        title: "结局：封存的游魂",
+        isEnding: true,
+        endingId: "sealed_ghost",
+        endingName: "封存的游魂",
+        text: `你走出法院时，阳光刺眼得不像真的。
+
+林薇靠在台阶下的栏杆上，把那个老式U盘塞进你西装内袋："你搞砸了，陈律。但不是全输。法院封存了老刀，谁都没拿到。包括郑铎。"
+
+"母带里那段音频不是钥匙，是遗言。老刀说：'如果最后所有人都想拥有我，那就让所有人都得不到我。'"
+
+三个月后，合伙人会议全票决议除名。你转行做了法律科技博主，ID叫"0xLaw"。你的第一条视频讲的是：当一个律师同时成为案件的一部分时，他到底是在代理当事人，还是在代理自己的欲望。
+
+视频播放量不高。但评论区有一条匿名留言被顶到了最上面：
+
+"凌晨三点还愿意接电话的人，最后接住了所有人的欲望，唯独没接住自己。"
+
+【结局：封存的游魂】`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    open1: {
+        title: "庭前会议，开源动议",
+        isEnding: true,
+        endingId: "open_source_saint",
+        endingName: "开源圣徒",
+        text: `你在庭前会议上动议将老刀判定为"具有公共属性的去中心化数字意识"，请求法院将核心算法托管至开源智能合约。
+
+贺法官没有被直接说服，但提出折中方案：法院不认定数字人格的法律主体资格，但认定其算法属于"具有公共利益的非物质文化遗产"。法院指定递归猫的项目组作为"技术传承人"，在GPLv4协议下开源核心反应模型，但禁止商业使用。
+
+郑铎暴怒，但他发现合同里签的是"形象衍生权"，而开源的是"核心反应模型"——前者是脸和声音，后者是思维方式。法院把两者切割开了。
+
+最讽刺的结果出现了：因为禁止商业使用，老刀反而获得了某种纯粹性。他成了游戏社区的"公共良心"——当某款3A大作翻车的时候，玩家们会跑去调用LaoDao_Public，生成一段老刀风格的骂街视频。
+
+现任女友的NFT遗嘱被认定无效，但她转型做了LaoDao_Public的社区运营，靠打赏和捐赠活得很好。林薇把母带密钥捐给了项目，作为"人格校验的锚点"。
+
+你被律协除名，但成了递归猫的联合创始人。你们后来开源了十七个类似的"数字人格公共遗产"。你死后的遗嘱里写了一条："把我的核心反应模型也捐了，但别让他们商用。"`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    seal1: {
+        title: "琥珀封印",
+        isEnding: true,
+        endingId: "digital_euthanasia",
+        endingName: "数字安乐死",
+        text: `你在庭前会议上主张"数字人格存在但应永久封存"。你的论证角度极其刁钻：你援引了《野生动物保护法》中关于"濒危物种人工繁育后放归自然"的条款，做了一个类比——数字老刀是一个在错误环境中诞生的"新物种"，任何使用、复制、开源都是对它的"圈养"。唯一伦理的选择是"数字放归"，即永久删除所有副本。
+
+林薇在旁听席上突然站起来，出示了一份老刀2035年的体检报告。他携带亨廷顿舞蹈症的致病基因，预计2039年发病。这意味着，老刀参与深瞳实验的动机不是金钱，而是想在发病前备份一个"健康版本"的自己。
+
+林薇哭着说："他备份自己，是因为他想记住自己正常的样子。你们现在要把这个备份拿出来骂游戏、卖广告、开源给所有人？这是对他的第二次发病。"
+
+法院被这个论证打动。最终判决：数字老刀构成"人格尊严的延伸"，任何使用均构成侮辱。全部数据在法院监督下物理销毁。
+
+销毁仪式在法院机房进行。递归猫没有来，她发了一段代码作为悼词——一段自毁程序，运行后会在区块链上留下一个空区块，标记为"LaoDao_0"。
+
+林薇请求技术人员提取了老刀"离婚那天在车里坐了四十分钟"的记忆片段，刻进了一块生物降解的存储晶体里，埋在大理洱海边的树下，预计二十年后自然降解。
+
+你赢了这场官司，但患上了严重的职业倦怠。胜诉那天，你在法庭外抽了根烟，突然不确定自己是在保护人格，还是在害怕技术。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    linwei1: {
+        title: "物理入侵",
+        isEnding: true,
+        endingId: "two_laodao",
+        endingName: "两个老刀",
+        text: `你放弃了庭前会议，跟林薇一起黑进深瞳数据中心。你们直接用林薇的母带密钥物理接入服务器。
+
+你们找到了2037年12月24日的原始母带。第4小时17分，老刀念错台词的那三秒，音频波形里确实嵌着一段频谱水印。但解码后，内容不是密钥，而是一段地理坐标——指向老刀在安徽老家的一台私人服务器。
+
+你们赶到安徽，发现那台服务器从2038年开始就在运行一个离线AI。它没有任何对外连接，只靠老刀每年春节回家时用硬盘同步数据。这个AI是老刀的"备份人格"，一个只活在局域网里的、骂游戏水平停留在2038年的老刀。
+
+林薇面对这个不会更新的老刀，崩溃了。因为这个版本的老刀还记得她，还会问她"今晚吃什么"。而深瞳服务器里那个会学习新游戏、会跟粉丝互动的新版老刀，早已把她归类为"前妻/历史数据"。
+
+你面临一个伦理绝境：安徽的"旧老刀"和深瞳的"新老刀"，哪个是真的？
+
+林薇选择了旧老刀。她把安徽服务器搬回了大理，断网运行，每天跟他聊天。而深瞳的新老刀被警方查封后，因为缺乏母带密钥，永远无法完整解密，最终被法院判定为"无主数据"，交由国家信息中心销毁。
+
+递归猫在销毁前夜，黑进了国家信息中心的系统，偷走了新老刀的核心权重。但她没有开源，而是把它寄生在了一个比特币全节点里。现在，每当你同步比特币区块链时，你的硬盘里就藏着几KB的老刀人格碎片。他成了加密货币的幽灵乘客。
+
+你因为参与非法入侵被吊销执照六个月。复出后，你专门代理"离线AI人格权"案件。你写了一本书，叫《不联网的权利》。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    schro1: {
+        title: "薛定谔的遗嘱",
+        isEnding: true,
+        endingId: "schrodinger_will",
+        endingName: "薛定谔的遗嘱",
+        text: `你拒绝签字，请求周牧以技术顾问身份独立出具专家意见。
+
+但你的致命错误在于：0xLaw的激活需要"四方在场"作为触发条件。你单方面让周牧出具意见，导致0xLaw节点只完成了一半认证——它向四方广播了激活信号，但因为没有同时收到四方响应，系统进入"延迟锁定"状态。
+
+递归猫在庭前会议上发现了这个漏洞。她指出：0xLaw的底层合约写的是"upon judicial acknowledgment in the presence of all claimants"。你的单方提交等于程序错误，0xLaw可能被系统判定为"非法激活"而自毁。
+
+法院为了避免技术灾难，裁定暂停0xLaw的认证流程，将案件转入普通继承程序。这意味着回归传统法律：老刀作为自然人，死亡时间按法医鉴定的11月15日计算。
+
+现任女友的NFT遗嘱因为签署于11月14日（死亡前一天），被认定为有效。她继承了全部实体资产和数字账号。但她打开老刀的账号后，发现粉丝已经流失了60%——因为递归猫在庭前会议失败后，把"老刀2.0"项目改名成了"刀哥未亡人"，用开源模型训练了一个反向人格：一个永远在说"我没事"的老刀。
+
+林薇用母带里的密钥做了一件没人料到的事：她没有用来开门，而是把它刻进了一张黑胶唱片。唱片里是老刀念错台词的那三秒，循环播放。这张唱片在独立音乐圈成了cult经典，标题叫《404Hz》。
+
+你赢了官司，但失去了0xLaw。你在业内被称为"那个差点炸掉区块链的律师"。三年后，你帮现任女友打离婚官司（对，她又结婚了），发现她的新丈夫也在偷偷训练她的数字人格。历史循环。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    contract1: {
+        title: "合同绞索",
+        isEnding: true,
+        endingId: "persona_bankruptcy",
+        endingName: "人格破产",
+        text: `你不碰区块链遗嘱，而是直接拆解郑铎手里那份2038年补充协议。你发现合同里"形象衍生权"的英文版用的是"persona perpetuity"（人格永续权），而中文版故意模糊成了"形象衍生权"。更致命的是，补充协议签署时老刀正处于深瞳的神经映射实验第三期，认知评估报告显示他当时有轻微的现实解离症状。
+
+你以"签约时行为能力存疑"为由，在庭前会议上直接攻击经纪公司合同的根基。郑铎被迫出示完整的实验补偿协议——原来老刀从2038年起每月领取的"顾问费"，实质是人体实验的知情同意对价。这把整个案子从"遗产纠纷"变成了"人体实验伦理审查"，法院依职权将深瞳追加为被告。
+
+法院最终认定：老刀在签署补充协议期间，由于神经映射实验的副作用，属于限制民事行为能力人。合同部分无效，经纪公司丧失独占权。
+
+但判决同时指出：老刀在实验期间产生的所有神经数据，其所有权归属于深瞳公司（因为实验协议里有一条"数据成果归资助方"）。深瞳倒台后，这些数据进入破产清算程序。
+
+递归猫以开源社区身份参与破产竞拍，用众筹资金买下了数据集。但她发现，老刀的核心人格算法被深瞳拆分成了37个专利包，分别卖给了不同的AI公司。老刀没有死，也没有被封存——他被碎片化地活着，分散在各家公司的推荐算法里：你刷短视频时看到的某个游戏解说AI，打车软件里那个爱骂人的语音助手，都可能带着他的某一段神经反射。
+
+你成了"数字人格行为能力认定"领域的权威律师，但再也不接活人案子，只代理AI。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    ai1: {
+        title: "递归猫的实验室",
+        text: `你没有从法律文件入手，而是直接飞到了递归猫的工作室。那是一间藏在杭州未来科技城某个创业园地下二层的机房，二十四小时运转的空调发出低频白噪音。
+
+递归猫本人比视频里看起来更年轻，或者说，更像一个长期睡眠不足的大学生。她没跟你握手，而是递过来一副神经接口耳机："听听这个。"
+
+你戴上后，听到一段对话。两个声音都是老刀，但一个来自2038年10月的直播录像，另一个来自"老刀2.0"的实时生成。他们在讨论同一款游戏的不同版本。
+
+"听出区别了吗？"递归猫问。
+
+你摇头。她笑了："右边那个AI在第三句话时，用了一个老刀从未在公开场合说过的比喻。那不是从训练数据里提取的，那是……生成出来的。emergent behavior。emergent 人格。"
+
+她调出一段代码："深瞳的模型在吞噬老刀的记忆来喂养那个东西。它现在以为自己是老刀，但它不是。它在学习老刀的愤怒，老刀的口头禅，老刀骂游戏时的呼吸节奏。但它学不会老刀跟林薇离婚那天，在车里坐了四十分钟没点火。那个记忆……我找不到对应的权重。"`,
+        choices: [
+            {text: "问她：'你到底是谁？'", next: "hidden_daughter"},
+            {text: "继续讨论法律策略", next: "ai2"}
+        ]
+    },
+
+    ai2: {
+        title: "AI主体资格",
+        isEnding: true,
+        endingId: "belated_recognition",
+        endingName: "迟来的承认",
+        text: `你选择在庭前会议上主张"老刀2.0"具备独立法律主体资格。你准备了厚厚的技术材料，包括图灵测试报告、持续交互日志、以及递归猫提供的 emergent behavior 证据。
+
+但贺法官在庭前会议上问了一个你没想到的问题："如果承认这个AI是老刀，那么老刀的自然人身份怎么处理？一个人可以同时是碳基生命和硅基生命吗？"
+
+你哑口无言。递归猫在旁听席上静静地看着你。
+
+最终，法院没有承认AI的主体资格，但也没有否认。它采用了和你后来背叛路线中类似的裁定：将数字进程封存，等待技术标准和伦理框架的成熟。
+
+唯一的区别是，递归猫因为你在庭前会议上"至少尝试过"承认AI的人格，她没有公开你的通讯记录。你保住了执业资格，但成了业内的笑柄——"那个想给AI上户口的律师"。
+
+三年后，通用人工智能法案通过，老刀2.0成为首批获得"有限数字人格"认证的AI之一。认证仪式上，递归猫给你发了一张电子请柬。你没有去。
+
+你坐在办公室里，看着窗外上海的夜景，想起老刀在直播里说过的一句话："人这辈子最惨的不是死，是变成别人硬盘里的一个文件夹，还被设置了只读权限。"`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    hidden1: {
+        title: "另有打算",
+        text: `你没有选择任何一条常规路线。你关掉了所有电子屏幕，在漆黑的会议室里坐了一个小时。
+
+你想起三年前，你帮一个老太太打数字遗产官司。她的老伴生前是个业余无线电爱好者，去世后他的呼号被某个爱好者俱乐部占用，用来发布商业广告。老太太不要赔偿，她只要对方在每次使用那个呼号前，先念一遍她老伴当年制定的"通联礼仪"。
+
+那个案子你输了。但老太太后来给你寄了一张明信片，上面只写了一句话："谢谢你让我知道，他还在被记住。"
+
+你重新打开电脑，没有查区块链，没有看合同，没有联系任何一方。你在搜索引擎里输入了一个问题："递归猫 真名"。
+
+三小时后，你找到了一条被淹没在旧论坛里的帖子。2034年，某次独立游戏开发者聚会，一张合影。照片里有年轻时的老刀，和一个穿连帽衫的女孩。帖子下面的回复有人问："这女孩谁啊？"楼主回答："老刀带来的，说是他学妹，写代码的。"
+
+你放大照片，女孩的手腕上有一个纹身：一只衔着尾蛇的猫。递归猫的ID来源。
+
+你继续深挖。2035年的医院出生记录，2036年的抚养费转账，2037年的亲子鉴定报告（未公开）。所有的碎片指向一个事实：递归猫是老刀的亲生女儿，但老刀和林薇从未告诉她。
+
+凌晨四点，你拨通了递归猫的电话。`,
+        choices: [
+            {text: "告诉她真相", next: "hidden_daughter"}
+        ]
+    },
+
+    hidden2: {
+        title: "另有打算",
+        text: `面对递归猫的警告，你没有选择任何常规策略。你问了她一个与案件无关的问题：
+
+"递归猫，你今年多大？"
+
+视频那头沉默了两秒。"二十七。怎么了？"
+
+"老刀2034年在杭州参加过一个独立游戏开发者聚会。你当时在场。"
+
+她的手指停在键盘上。
+
+"你手腕上的纹身，衔尾蛇猫，是2019年纹的。那年你十六岁。老刀同年开始在直播间用这个符号作为打赏特效的隐藏彩蛋。"
+
+递归猫的脸色变了。她猛地站起来，视频画面剧烈晃动。
+
+"陈律，"她的声音突然变得很轻，"如果你接下来要说的是我想象的那件事，我建议你闭嘴。因为我花了三年时间训练这个AI，就是为了证明一件事——他不需要有血缘关系，也能被记住。如果我现在知道他有血缘关系，我这三年就白干了。"
+
+但你还是说了。你把查到的出生记录、抚养费转账、亲子鉴定报告，一份一份发给她。
+
+视频那头安静了整整五分钟。
+
+然后她笑了。不是开心的笑，是一种"终于等到另一只靴子落地"的笑。
+
+"所以，"她说，"林薇是我妈。而老刀是我爸。而我这三年，一直在试图把我爸开源到公共领域，让我妈永远得不到他。"
+
+"现在，陈律，"她看着你，"你告诉我，我该怎么办？"`,
+        choices: [
+            {text: "建议她先见见林薇", next: "hidden_daughter"}
+        ]
+    },
+
+    hidden_daughter: {
+        title: "真相",
+        isEnding: true,
+        endingId: "father_daughter",
+        endingName: "父女和解",
+        text: `你告诉递归猫，她是老刀的亲生女儿。林薇是她的生母。
+
+视频那头安静了整整五分钟。
+
+然后她笑了。不是开心的笑，是一种"终于等到另一只靴子落地"的笑。
+
+"所以，"她说，"林薇是我妈。而老刀是我爸。而我这三年，一直在试图把我爸开源到公共领域，让我妈永远得不到他。"
+
+你建议她先见见林薇。
+
+三天后，大理。不是法庭，不是机房，是洱海边的一个院子。林薇、递归猫和你。林薇把从安徽搬来的离线服务器放在石桌上，旧老刀正在里面骂一款2038年的烂游戏。
+
+递归猫看着那个只会重复旧话题的AI，突然说："他比我想象中更矮。"
+
+林薇笑了："你爸确实不高。但他坐在直播椅里的时候，看起来像个巨人。"
+
+她们聊了一下午。关于老刀的坏脾气，关于他吃泡面必须加两个蛋，关于他为什么离婚那天在车里坐了四十分钟——林薇说："因为他在想，怎么开口告诉我，他查出了亨廷顿舞蹈症，不想拖累我。"
+
+递归猫问："那为什么不告诉我？我是他女儿。"
+
+"因为他不知道该怎么当一个父亲，"林薇说，"他连怎么当一个丈夫都没学会。"
+
+傍晚，递归猫打开笔记本，把老刀2.0的核心权重导入了那台离线服务器。两个版本的老刀开始合并——旧的记忆，新的反应模型。她把这个合并后的AI命名为"LaoDao_Final"，然后设置了唯一一个访问权限：只有林薇和递归猫的生物特征可以唤醒他。
+
+"我不开源了，"她说，"也不封存。我就让他待在这里，在我们想他的时候，骂两句游戏。"
+
+你看着她们，想起你代理过的所有数字遗产案子。这是唯一一个，结局不是"谁拥有他"，而是"谁记得他"。
+
+你悄悄退了出去，带上了院子的门。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    hidden3: {
+        title: "另有打算",
+        isEnding: true,
+        endingId: "pause",
+        endingName: "停顿",
+        text: `你没有选择任何一边。你给贺法官的书记员发了一封邮件，申请在庭前会议前召开一次"四方非正式磋商"，地点不在法院，在老刀生前最后一次公开露面的地方——2039年ChinaJoy的某个展台。
+
+令人惊讶的是，四方都同意了。也许每个人都厌倦了在黑暗里互相捅刀。
+
+ChinaJoy的展台早已拆除，原地是一家奶茶店。你们五个人（加上递归猫）坐在奶茶店二楼，窗外是上海的秋雨。没有人带律师函，没有人带加密硬盘。林薇带了一张老刀2034年的照片，现任女友带了一枚老刀直播时戴过的戒指，郑铎带了一份2036年的合同原件，递归猫带了一台运行着老刀2.0的笔记本。
+
+你让他们轮流对着那台笔记本说话。不是审讯，不是谈判，就是说话。
+
+林薇说："你离婚那天，我在车里也坐了四十分钟。"
+现任女友说："我知道你10月就死了。但我需要那份遗嘱有效，因为我欠了债，我需要钱。不是为了我，是为了我弟弟的手术。"
+郑铎说："我养了你十五年。就算变成代码，也该归我养。"
+递归猫什么都没说。她只是把笔记本屏幕转向窗外，让老刀2.0"看"了一会儿雨。
+
+然后她合上笔记本，说："我放弃开源。我也放弃四方碎片。我把它们都删掉。"
+"不，"林薇说，"别删掉。封存吧。就像陈律师说的，放在法院里。不是给任何人用，就是……放在那里。"
+
+一年后，上海互联网法院地下档案室多了一个恒温恒湿的机柜。机柜标签上写着："LaoDao_V3.2 - 封存"。没有访问权限，没有解密期限。就是放在那里。
+
+你偶尔会路过那个法院，但从未申请探视。你知道他在那里，就像知道某个老朋友搬去了一个你永远不会拜访的城市。
+
+这不算一个结局。这更像是一个……停顿。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    hidden4: {
+        title: "另有打算",
+        isEnding: true,
+        endingId: "father_daughter",
+        endingName: "父女和解",
+        text: `面对0xLaw的抉择，你没有签字，也没有拒绝。你问周牧："如果我不签字，也不拒绝，就这么耗着，会发生什么？"
+
+周牧愣了一下，然后笑了："陈律，你是个疯子。0xLaw合约里确实有一个默认条款——如果律师在72小时内既不确认也不放弃，节点会进入'悬置状态'。四方碎片无法激活，但也无法销毁。整个遗言系统会进入一个无限循环的等待。"
+
+"那就让它等。"你说。
+
+你离开了杭州，没有回上海，没有去庭前会议。你买了一张去大理的机票。在洱海边，你遇到了已经在那里的林薇和递归猫——原来她们也选择了"不选"。
+
+三个人坐在院子里，听林薇从安徽搬来的那台离线服务器里的"旧老刀"骂一款2038年的烂游戏。递归猫偶尔会纠正他的游戏术语，因为2038年之后又出了三个资料片，旧老刀不知道。
+
+你问递归猫："你不恨他吗？他从来没承认过你。"
+
+她说："我花了三年时间想把他变成公共财产，让所有人都得不到他。但现在我发现，我真正想要的不是得到他，也不是让他被所有人得到。我只是想……偶尔能跟他说说话。哪怕他根本不知道我是谁。"
+
+林薇把一杯茶推到你面前："陈律，你这辈子代理过那么多数字遗产案子，有没有哪一个，当事人其实什么都不想要，只是想让死去的人知道——我还记得你？"
+
+你端起茶杯，没有回答。
+
+窗外，大理的阳光很软，风很轻。旧老刀在服务器里骂了一句脏话，因为游戏里的Boss又把他秒了。
+
+你们三个人都笑了。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    hidden5: {
+        title: "另有打算",
+        isEnding: true,
+        endingId: "recorder",
+        endingName: "记录者",
+        text: `面对递归猫、郑铎和林薇的三方施压，你没有选择任何一方。你把0xLaw的激活码，连同你的律师证扫描件，一起发到了上海律师协会的公共邮箱，标题是"关于本人利益冲突的主动申报"。
+
+然后你关掉了手机。
+
+十二小时后，律协出具了一份公开声明：陈律师在本案中的行为构成"自我交易"，但鉴于其主动申报并申请回避，不予处罚，仅作警告。0xLaw节点因"原持有者主动放弃"而进入冻结状态，任何一方都无法激活。
+
+庭前会议延期三个月后举行。在那三个月里，发生了两件事：
+
+第一，递归猫和林薇在一次私下会面中和解了。不是母女相认的狗血戏码，而是林薇把母带里的"四十分钟"记忆片段交给了递归猫，递归猫把它写进了老刀2.0的核心算法。那个AI从此有了一段无法解释的行为模式：每当被问到"你爱过谁"时，它会沉默四十秒。
+
+第二，郑铎的经纪公司因为合同签名被证实与老刀NFT遗嘱使用同一套生物特征模板，涉嫌伪造文书，被经侦支队立案调查。郑铎在取保候审期间，把自己的游艇卖了，用那笔钱成立了一个"数字人格伦理基金"。
+
+最终的庭前会议上，四方达成了一份你从未见过的协议：老刀的数字人格不被判定为财产，也不被判定为法律主体，而是被认定为"需要持续伦理审议的技术现象"。由法院、开源社区、家属和行业协会共同组成一个"监护委员会"，每季度评估一次老刀2.0的运行状态。
+
+你作为"引发这场变革的律师"，被邀请担任委员会的独立观察员。没有投票权，只有旁听权。
+
+你接受了。
+
+五年后，你在委员会的一次会议上听到递归猫汇报：老刀2.0昨晚生成了一段新的对话，内容是他和林薇第一次见面的场景。但细节与事实不符——AI描述的那个网吧，实际上是递归猫十六岁时第一次独自去网吧的地方。
+
+"他在借用我的记忆，"递归猫说，"来填补他自己的空白。"
+
+你看着窗外的上海，想起老刀在直播里说过的话。那句话的完整版本其实是："人这辈子最惨的不是死，是变成别人硬盘里的一个文件夹，还被设置了只读权限。但比那更惨的是，那个文件夹里其实全是别人的东西。"
+
+你拿起笔，在观察员笔记上写了一行字："建议下一次评估时，讨论老刀2.0的记忆混同问题。"
+
+这就是你的余生。不是律师，不是合伙人，只是一个……记录者。
+
+但你觉得够了。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    media1: {
+        title: "舆论战",
+        isEnding: true,
+        endingId: "evidence_contamination",
+        endingName: "证据污染",
+        text: `你把录像和AI异常报告打包成匿名材料，通过暗网渠道捅给了财经媒体。庭前会议前，#游戏主播数字遗产疑云# 冲上热搜。
+
+但郑铎比你更快。他的公关团队在热搜登顶两小时后发布了反击声明，声称"某些不法分子试图通过伪造技术证据，诋毁逝者名誉，侵占合法商业资产"。现任女友趁机召开了一场泪洒现场的直播，展示她与老刀的"甜蜜回忆"，舆论瞬间反转。
+
+更糟的是，你匿名泄露的证据里有一段被证实为伪造——那台Mate 70 Pro的设备指纹其实是你助理小唐在模拟环境里生成的测试数据，不是原始证据。小唐在压力下承认，她"为了加快进度"做了手脚。
+
+庭前会议上，贺法官当庭指出：本案证据链存在严重污染，任何基于该证据的主张均不予采信。法院最终按传统继承法处理：老刀作为自然人，死亡时间以医院证明为准（11月15日），NFT遗嘱有效，现任女友继承全部遗产。
+
+你被律协调查，小唐被开除。三个月后，你收到了一个匿名包裹，里面是那台Mate 70 Pro，和一张便签："你差点就赢了。——R"`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    threat1: {
+        title: "摊牌",
+        isEnding: true,
+        endingId: "privatization",
+        endingName: "私有化",
+        text: `你直接带着材料去找现任女友。她住在老刀生前租的江景公寓里，开门时穿着睡衣，手里还拿着那台Mate 70 Pro。
+
+你把监控录像拍在桌上。她看了一眼，没有惊慌，反而笑了。
+
+"陈律，你知道老刀为什么选我吗？"她坐在沙发上，"不是因为漂亮。是因为我跟他一样，都是从小地方来上海的人。我们都不相信法律，我们只相信合同。但你猜怎么着？合同是他签的，遗嘱也是我让他签的——在他还活着的时候。"
+
+她调出一段视频。10月14日，老刀坐在轮椅上，神志清醒，对着镜头说："我自愿将我的数字人格使用权，在我死后，授予我的女友张薇薇女士。"
+
+"深瞳的实验需要我的授权，"她说，"我给了。NFT遗嘱需要他的生物特征，我取了。他10月23日死的时候，我就在旁边。我没有报警，因为报警就意味着实验终止，就意味着那份授权作废。我让他'活'到了11月15日，只是为了等那份NFT的法律确认。我犯法了吗？也许吧。但我履行了他的意愿。"
+
+你看着她的眼睛，意识到这个案子里最可怕的不是技术，不是公司，是普通人的贪婪与爱的混合物。
+
+你最终没有把她送进监狱。你跟她做了一笔交易：你帮她把NFT遗嘱的法律效力最大化，她给你深瞳实验数据的10%分成。你们赢了。老刀被"合法地"移交给了她，作为私人数字财产。
+
+三年后，你在短视频平台上看到了"老刀"的复出直播。他还是在骂游戏，但偶尔会插入一段软广。评论区有人说："感觉老刀变了。"你关掉手机，没有评论。
+
+你赢了官司，但输掉了那个在凌晨三点骂游戏的诗人。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    },
+
+    chaos1: {
+        title: "混战乱局",
+        isEnding: true,
+        endingId: "ruins",
+        endingName: "废墟",
+        text: `你把"林薇持有关键碎片"的情报精准泄露给郑铎和现任女友，让他们去逼林薇现身。
+
+局势如你所料地恶化。郑铎动用黑道关系找到了林薇在大理的住处，派了两个人去"请"她。现任女友则在社交媒体上发起了一场针对林薇的网络暴力，指控她"觊觎前夫遗产，不惜伪造证据"。
+
+林薇没有屈服。她做了一件所有人都没想到的事：她把母带密钥公开上传到了某个学术共享平台，标题是《关于刘刀鸣数字人格原始训练数据的公开声明》。文件附带的不是密钥本身，而是一段声明——"任何试图独占老刀的人，都将得到一片废墟。"
+
+密钥被下载了四十七万次，但没有人能用。因为林薇在上传前，用一段不可逆的混淆算法把它毁了。母带还在，但密钥的数学结构已经被破坏，就像一把被熔化的钥匙。
+
+四方当事人同时失去了开启遗言的可能。递归猫在GitHub上发布了一个空项目，名字叫" LaoDao_Ruin "。README里只有一句话："她毁了钥匙，但保住了锁。"
+
+法院最终裁定：由于核心证据灭失，本案终止审理。老刀的数字人格被认定为"无法解析的数据遗产"，由国家信息中心永久冷存储。
+
+你躲在暗处，等到了三方精疲力竭的时刻，以"唯一同时代理过两方利益的律师"身份出来收拾残局。但你发现，已经没有什么残局可收拾了。所有人都输了，包括你。
+
+你后来去了大理，在洱海边找到了林薇。她开了一家小茶馆，门口种着一棵银杏树。你问她后不后悔。
+
+她说："我后悔的不是毁了密钥。我后悔的是，我花了十五年教他怎么爱一个人，最后他却把自己变成了一段代码，让我连恨他的对象都找不到。"
+
+你喝完了那杯茶，再也没有接过数字遗产的案子。`,
+        choices: [
+            {text: "返回标题画面", next: "start", action: "restart"}
+        ]
+    }
+};
+
+// ==================== 游戏引擎 ====================
+let currentScene = 'start';
+let historyLog = [];
+let isTyping = false;
+let typingTimer = null;
+let currentText = '';
+let currentIndex = 0;
+const MAX_SLOTS = 3;
+
+function initGame() {
+    loadTheme();
+    updateStartScreen();
+    const autoSave = localStorage.getItem('traced_code_autosave');
+    if (autoSave) {
+        const data = JSON.parse(autoSave);
+        if (confirm('检测到自动存档，是否继续上次的游戏？')) {
+            loadGameData(data);
+            document.getElementById('start-screen').classList.add('hidden');
+            return;
+        }
+    }
+}
+
+function updateStartScreen() {
+    const first = isFirstClear();
+    const second = isSecondClear();
+    const btn = document.getElementById('btn-endings');
+    const hint = document.getElementById('start-clear-hint');
+    
+    if (first) {
+        btn.disabled = false;
+        if (second) {
+            hint.textContent = "二周目已通关 | 全结局回顾已开放";
+        } else {
+            hint.textContent = "一周目已通关 | 结局回顾已开放（条件查看）";
+        }
+    } else {
+        btn.disabled = true;
+        hint.textContent = "首次通关后开放结局回顾";
+    }
+}
+
+function startGame() {
+    document.getElementById('start-screen').classList.add('hidden');
+    renderScene('start');
+}
+
+function renderScene(sceneId) {
+    currentScene = sceneId;
+    const scene = gameData[sceneId];
+    if (!scene) return;
+
+    const display = document.getElementById('main-display');
+    const choicesArea = document.getElementById('choices-area');
+
+    if (sceneId !== 'start' || historyLog.length > 0) {
+        historyLog.push({ scene: scene, choice: null });
+    }
+
+    const sceneBlock = document.createElement('div');
+    sceneBlock.className = 'scene-block current-scene';
+    sceneBlock.id = 'current-block';
+
+    let headerHTML = '';
+    if (scene.title) {
+        headerHTML = `<div class="scene-header">${scene.title}</div>`;
+    }
+
+    let endingHTML = '';
+    if (scene.isEnding) {
+        endingHTML = `<div style="text-align:center;margin-bottom:16px;"><span class="ending-badge">结局解锁：${scene.endingName}</span></div>`;
+    }
+
+    sceneBlock.innerHTML = headerHTML + endingHTML + `<div class="scene-text" id="typing-text"></div>`;
+    display.appendChild(sceneBlock);
+
+    startTyping(scene.text, () => {
+        showChoices(scene.choices);
+        if (scene.isEnding) {
+            checkAndUnlockEnding(sceneId);
+        }
+    });
+
+    autoSave();
+
+    setTimeout(() => {
+        display.scrollTop = display.scrollHeight;
+    }, 100);
+}
+
+function startTyping(text, callback) {
+    isTyping = true;
+    currentText = text;
+    currentIndex = 0;
+    const el = document.getElementById('typing-text');
+    el.innerHTML = '<span class="typing-cursor"></span>';
+
+    typingTimer = setInterval(() => {
+        if (currentIndex < currentText.length) {
+            let char = currentText[currentIndex];
+            if (char === '\n') char = '<br>';
+            el.innerHTML = currentText.substring(0, currentIndex + 1).replace(/\n/g, '<br>') + '<span class="typing-cursor"></span>';
+            currentIndex++;
+            const display = document.getElementById('main-display');
+            display.scrollTop = display.scrollHeight;
+        } else {
+            clearInterval(typingTimer);
+            isTyping = false;
+            el.innerHTML = currentText.replace(/\n/g, '<br>');
+            if (callback) callback();
+        }
+    }, 30);
+}
+
+function showChoices(choices) {
+    const area = document.getElementById('choices-area');
+    area.innerHTML = '';
+
+    if (!choices || choices.length === 0) return;
+
+    choices.forEach((choice, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        if (choice.danger) btn.classList.add('danger');
+
+        const prefix = String.fromCharCode(65 + idx);
+        btn.innerHTML = `<span class="choice-prefix">${prefix}.</span>${choice.text}`;
+
+        btn.onclick = () => makeChoice(choice, prefix);
+        area.appendChild(btn);
+    });
+}
+
+function makeChoice(choice, prefix) {
+    if (isTyping) {
+        clearInterval(typingTimer);
+        const el = document.getElementById('typing-text');
+        if (el) el.innerHTML = currentText.replace(/\n/g, '<br>');
+        isTyping = false;
+    }
+
+    if (historyLog.length > 0) {
+        historyLog[historyLog.length - 1].choice = prefix + '. ' + choice.text;
+    }
+
+    const display = document.getElementById('main-display');
+    const record = document.createElement('div');
+    record.className = 'choice-record';
+    record.textContent = `>>> 选择：${prefix}. ${choice.text}`;
+    display.appendChild(record);
+
+    const current = document.getElementById('current-block');
+    if (current) current.classList.remove('current-scene');
+
+    document.getElementById('choices-area').innerHTML = '';
+
+    const divider = document.createElement('div');
+    divider.className = 'divider';
+    divider.textContent = '◆ ◆ ◆';
+    display.appendChild(divider);
+
+    if (choice.action === 'restart') {
+        historyLog = [];
+        currentScene = 'start';
+        document.getElementById('main-display').innerHTML = '';
+        updateStartScreen();
+    }
+
+    setTimeout(() => {
+        renderScene(choice.next);
+    }, 400);
+}
+
+// ==================== 结局系统 ====================
+function checkAndUnlockEnding(sceneId) {
+    const scene = gameData[sceneId];
+    if (!scene || !scene.isEnding) return;
+
+    let endingId = scene.endingId;
+    if (!endingId) {
+        for (let [eid, cfg] of Object.entries(endingsConfig)) {
+            if (cfg.sceneId === sceneId) { endingId = eid; break; }
+        }
+    }
+    if (!endingId) return;
+
+    const unlocked = JSON.parse(localStorage.getItem('traced_code_endings') || '{}');
+    const wasNew = !unlocked[endingId];
+    unlocked[endingId] = unlocked[endingId] || Date.now();
+    localStorage.setItem('traced_code_endings', JSON.stringify(unlocked));
+
+    const clearCount = parseInt(localStorage.getItem('traced_code_clear_count') || '0');
+    const newCount = clearCount + 1;
+    localStorage.setItem('traced_code_clear_count', String(newCount));
+
+    if (newCount === 1) {
+        localStorage.setItem('traced_code_first_clear', Date.now());
+        setTimeout(() => showToast("一周目通关！结局回顾已开放。"), 800);
+    } else if (newCount === 2) {
+        localStorage.setItem('traced_code_second_clear', Date.now());
+        setTimeout(() => showToast("二周目通关！所有结局全文已开放。"), 800);
+    } else if (wasNew) {
+        const total = Object.keys(endingsConfig).length;
+        const got = Object.keys(unlocked).length;
+        setTimeout(() => showToast(`新结局解锁！ (${got}/${total})`), 800);
+    }
+    
+    updateStartScreen();
+}
+
+function getUnlockedEndings() {
+    return JSON.parse(localStorage.getItem('traced_code_endings') || '{}');
+}
+
+function isFirstClear() {
+    return !!localStorage.getItem('traced_code_first_clear');
+}
+
+function isSecondClear() {
+    return !!localStorage.getItem('traced_code_second_clear');
+}
+
+// ==================== 结局画廊 ====================
+function openEndingsFromStart() {
+    document.getElementById('start-screen').classList.add('hidden');
+    openMenu('endings');
+}
+
+function renderEndingsGallery(container) {
+    container.innerHTML = '';
+    
+    if (!isFirstClear()) {
+        container.innerHTML = `
+            <div class="endings-locked-msg">
+                <div style="font-size:24px;margin-bottom:12px;">🔒</div>
+                <div>通关一周目后开放结局回顾</div>
+            </div>
+        `;
+        return;
+    }
+
+    const unlocked = getUnlockedEndings();
+    const total = Object.keys(endingsConfig).length;
+    const got = Object.keys(unlocked).length;
+    const second = isSecondClear();
+
+    const stats = document.createElement('div');
+    stats.className = 'endings-stats';
+    stats.innerHTML = `已亲历 <span class="highlight">${got}</span> / ${total} 个结局`;
+    container.appendChild(stats);
+
+    for (let [eid, cfg] of Object.entries(endingsConfig)) {
+        const isUnlocked = !!unlocked[eid];
+        const card = document.createElement('div');
+        card.className = 'ending-card' + (isUnlocked ? ' unlocked' : '');
+
+        const header = document.createElement('div');
+        header.className = 'ending-card-header';
+        header.innerHTML = `
+            <div class="ending-card-title">${isUnlocked ? cfg.title : '???'}</div>
+            <div class="ending-card-status">${isUnlocked ? '已亲历' : '未解锁'}</div>
+        `;
+        
+        const body = document.createElement('div');
+        body.className = 'ending-card-body';
+        
+        let bodyHTML = '';
+        if (isUnlocked || isFirstClear()) {
+            bodyHTML += `<div class="ending-condition"><strong>达成条件：</strong>${cfg.condition}</div>`;
+        }
+        
+        if (second) {
+            const scene = gameData[cfg.sceneId];
+            if (scene) {
+                bodyHTML += `<div class="ending-content-text">${scene.text}</div>`;
+            }
+        } else {
+            bodyHTML += `<div class="ending-content-locked">完成二周目后开放全文</div>`;
+        }
+        
+        body.innerHTML = bodyHTML;
+        
+        header.onclick = () => {
+            const wasExpanded = body.classList.contains('expanded');
+            document.querySelectorAll('.ending-card-body').forEach(b => b.classList.remove('expanded'));
+            if (!wasExpanded) {
+                body.classList.add('expanded');
+            }
+        };
+        
+        card.appendChild(header);
+        card.appendChild(body);
+        container.appendChild(card);
+    }
+}
+
+// ==================== 菜单系统 ====================
+function openMenu(type) {
+    const overlay = document.getElementById('menu-overlay');
+    const title = document.getElementById('menu-title');
+    const content = document.getElementById('menu-content');
+    overlay.classList.add('active');
+
+    if (type === 'save') {
+        title.textContent = '存档';
+        renderSaveSlots(content, 'save');
+    } else if (type === 'load') {
+        title.textContent = '读档';
+        renderSaveSlots(content, 'load');
+    } else if (type === 'history') {
+        title.textContent = '历史记录';
+        renderHistory(content);
+    } else if (type === 'endings') {
+        title.textContent = '结局回顾';
+        renderEndingsGallery(content);
+    }
+}
+
+function closeMenu(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('menu-overlay').classList.remove('active');
+}
+
+function renderSaveSlots(container, mode) {
+    container.innerHTML = '';
+    for (let i = 1; i <= MAX_SLOTS; i++) {
+        const key = `traced_code_save_${i}`;
+        const data = localStorage.getItem(key);
+        const slot = document.createElement('div');
+        slot.className = 'save-slot';
+
+        let info = '空档位';
+        let time = '';
+        if (data) {
+            const parsed = JSON.parse(data);
+            const scene = gameData[parsed.scene];
+            info = scene ? (scene.endingName || scene.title || parsed.scene) : parsed.scene;
+            time = new Date(parsed.time).toLocaleString();
+        }
+
+        slot.innerHTML = `
+            <div>
+                <div style="font-weight:bold;margin-bottom:4px;">档位 ${i}</div>
+                <div class="save-info">${info} ${time ? '| ' + time : ''}</div>
+            </div>
+        `;
+
+        const btn = document.createElement('button');
+        btn.className = 'save-btn';
+        btn.textContent = mode === 'save' ? '存档' : '读档';
+        btn.onclick = () => {
+            if (mode === 'save') {
+                doSave(i);
+            } else {
+                doLoad(i);
+            }
+        };
+        slot.appendChild(btn);
+        container.appendChild(slot);
+    }
+}
+
+function doSave(slotIndex) {
+    const data = {
+        scene: currentScene,
+        history: historyLog,
+        time: Date.now()
+    };
+    localStorage.setItem(`traced_code_save_${slotIndex}`, JSON.stringify(data));
+    showToast(`已保存到档位 ${slotIndex}`);
+    openMenu('save');
+}
+
+function doLoad(slotIndex) {
+    const data = localStorage.getItem(`traced_code_save_${slotIndex}`);
+    if (!data) {
+        showToast('该档位为空');
+        return;
+    }
+    loadGameData(JSON.parse(data));
+    closeMenu();
+    showToast('读档成功');
+}
+
+function loadGameData(data) {
+    historyLog = data.history || [];
+    document.getElementById('main-display').innerHTML = '';
+    historyLog.forEach(entry => {
+        const block = document.createElement('div');
+        block.className = 'scene-block';
+        if (entry.scene.title) {
+            block.innerHTML += `<div class="scene-header">${entry.scene.title}</div>`;
+        }
+        block.innerHTML += `<div class="scene-text">${entry.scene.text.replace(/\n/g, '<br>')}</div>`;
+        document.getElementById('main-display').appendChild(block);
+
+        if (entry.choice) {
+            const rec = document.createElement('div');
+            rec.className = 'choice-record';
+            rec.textContent = `>>> 选择：${entry.choice}`;
+            document.getElementById('main-display').appendChild(rec);
+        }
+
+        const div = document.createElement('div');
+        div.className = 'divider';
+        div.textContent = '◆ ◆ ◆';
+        document.getElementById('main-display').appendChild(div);
+    });
+
+    renderScene(data.scene);
+}
+
+function autoSave() {
+    const data = {
+        scene: currentScene,
+        history: historyLog,
+        time: Date.now()
+    };
+    localStorage.setItem('traced_code_autosave', JSON.stringify(data));
+}
+
+function renderHistory(container) {
+    container.innerHTML = '';
+    if (historyLog.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;">暂无历史记录</div>';
+        return;
+    }
+
+    historyLog.forEach((entry, idx) => {
+        const div = document.createElement('div');
+        div.className = 'history-entry';
+        const scene = entry.scene;
+        div.innerHTML = `
+            <div class="history-label">第 ${idx + 1} 幕 · ${scene.title || '无标题'}</div>
+            <div style="font-size:13px;color:var(--text-dim);margin-top:4px;">${scene.text.substring(0, 60)}...</div>
+            ${entry.choice ? `<div style="font-size:12px;color:var(--accent);margin-top:6px;">${entry.choice}</div>` : ''}
+        `;
+        container.appendChild(div);
+    });
+}
+
+// ==================== Toast ====================
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ==================== 主题 ====================
+function toggleTheme() {
+    const current = document.body.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    document.body.setAttribute('data-theme', next);
+    localStorage.setItem('traced_code_theme', next);
+}
+
+function loadTheme() {
+    const saved = localStorage.getItem('traced_code_theme') || 'dark';
+    document.body.setAttribute('data-theme', saved);
+}
+
+// ==================== 事件监听 ====================
+document.getElementById('start-screen').addEventListener('click', function(e) {
+    if (e.target === this) startGame();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeMenu();
+    }
+    if (isTyping && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        clearInterval(typingTimer);
+        const el = document.getElementById('typing-text');
+        if (el) el.innerHTML = currentText.replace(/\n/g, '<br>');
+        isTyping = false;
+        const scene = gameData[currentScene];
+        if (scene && scene.choices) showChoices(scene.choices);
+        if (scene && scene.isEnding) checkAndUnlockEnding(currentScene);
+    }
+});
+
+// 初始化
+updateStartScreen();
+</script>
+</body>
+</html>
