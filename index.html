@@ -1,3 +1,11 @@
+<!-- 
+  溯码：数字遗言
+  作者：@斯芬克斯（微信号：riksle）
+  协作工具：Kimi K2.6
+  声明：本作品的世界观架构、13结局剧情树、交互机制与UI设计由作者主导并经过多轮迭代修正；
+        Kimi K2.6 作为AI协作工具参与文本生成与代码实现。
+        灵感最初来自作者与 Kimi 的一场聊天记录。
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -534,6 +542,11 @@
             .start-btn { padding: 12px 40px; font-size: 13px; }
             .start-btn.secondary { padding: 8px 28px; font-size: 11px; }
         }
+        @media (hover: none) {
+            .choice-btn { padding: 18px 20px; margin-bottom: 14px; }
+            .choice-btn:hover { transform: none; background: transparent; }
+            .choice-btn:active { transform: scale(0.98); background: rgba(0, 212, 170, 0.05); }
+        }
     </style>
 </head>
 <body data-theme="dark">
@@ -541,7 +554,8 @@
         <div class="start-title">溯码：数字遗言</div>
         <div class="start-subtitle">TRACE CODE: DIGITAL TESTAMENT</div>
         <div class="start-credit">
-            本文字冒险游戏基于 Kimi K2.6 与 @斯芬克斯（微信号：riksle）我本人！！ 的聊天记录灵感制作
+            本游戏由 <strong>@斯芬克斯（微信号：riksle）</strong> 主导世界观、剧情树和交互设计，基于 <strong>Kimi K2.6</strong> 协作生成。<br><br>
+            灵感最初来自一场"有点郁闷"的聊天记录——聊到数字遗产、律师，和AI的人格权。
         </div>
         <button class="start-btn" onclick="startGame()">开始游戏</button>
         <button class="start-btn secondary" id="btn-typewriter" onclick="toggleTypewriter()">打字机效果：开</button>
@@ -584,7 +598,8 @@ const endingsConfig = {
     "schrodinger_will": { title: "薛定谔的遗嘱", condition: "在杭州经侦节点选择拒绝签字，请求周牧独立出具专家意见，导致0xLaw进入延迟锁定，案件转入普通继承程序。", sceneId: "schro1" },
     "persona_bankruptcy": { title: "人格破产", condition: "开局选择调查经纪公司合同，发现老刀签约时处于限制民事行为能力状态，合同部分无效，但神经数据进入破产清算被拆分出售。", sceneId: "contract1" },
     "belated_recognition": { title: "迟来的承认", condition: "开局选择接触AI项目组，通过独立测试发现AI编造记忆，庭前会议上主张冻结AI接口，法院虽未承认但封存等待立法成熟。", sceneId: "ai2" },
-    "father_daughter": { title: "父女和解", condition: "在特定节点选择'另有打算'并追问递归猫身世触发真相线，或选择不签字不放弃前往大理，最终在大理院子达成和解。", sceneId: "hidden_daughter" },
+    "father_daughter": { title: "父女和解", condition: "在特定节点选择'另有打算'并追问递归猫身世触发真相线，最终在大理院子达成和解。", sceneId: "hidden_daughter" },
+    "no_choice": { title: "不选之择", condition: "在0xLaw抉择时选择不签字也不拒绝，让节点进入悬置状态，随后前往大理与林薇和递归猫达成和解。", sceneId: "hidden4" },
     "pause": { title: "停顿", condition: "在四方碎片节点选择'另有打算'，组织四方在ChinaJoy奶茶店非正式磋商，最终达成无判决的封存共识。", sceneId: "hidden3" },
     "recorder": { title: "记录者", condition: "在最终节点选择'另有打算'，向律协主动申报利益冲突并放弃0xLaw，最终成为监护委员会的独立观察员。", sceneId: "hidden5" },
     "evidence_contamination": { title: "证据污染", condition: "在发现死亡时间后选择将录像匿名捅给媒体，因助理伪造证据导致证据链污染，法院驳回所有主张，现任女友合法继承。", sceneId: "media1" },
@@ -683,7 +698,11 @@ const gameData = {
 
     b2: {
         title: "挑拨郑铎",
-        text: `你没有继续跟林薇深入，而是决定把水搅浑。你拨通了郑铎的私人线路。
+        text: `林薇在电话里顿了顿，说："我可以把纸条上的东西给你，但你要答应我一件事——别让郑铎拿到数字人格监护权。他想要的不是老刀，是一个能替他骂游戏、签代言的永续资产。"
+
+你答应了。她发来一张扫描件：纸条背面有一串数字，是郑铎的私人线路。林薇说："这是老刀半年前偷偷记下的，他说'如果有一天我变成代码，郑铎会是第一个来收尸的人'。"
+
+你决定把水搅浑。你拨通了那个号码。
 
 "郑总，老刀十月份就死了，十一月签遗嘱的不是人。深瞳手里有个'活性资产'，你们合同里的'死亡触发条款'被人技术性规避了。"
 
@@ -1273,8 +1292,8 @@ ChinaJoy的展台早已拆除，原地是一家奶茶店。你们五个人（加
     hidden4: {
         title: "另有打算",
         isEnding: true,
-        endingId: "father_daughter",
-        endingName: "父女和解",
+        endingId: "no_choice",
+        endingName: "不选之择",
         text: `面对0xLaw的抉择，你没有签字，也没有拒绝。你问周牧："如果我不签字，也不拒绝，就这么耗着，会发生什么？"
 
 周牧愣了一下，然后笑了："陈律，你是个疯子。0xLaw合约里确实有一个默认条款——如果律师在72小时内既不确认也不放弃，节点会进入'悬置状态'。四方碎片无法激活，但也无法销毁。整个遗言系统会进入一个无限循环的等待。"
@@ -1478,14 +1497,14 @@ function startGame() {
     renderScene('start');
 }
 
-function renderScene(sceneId) {
+function renderScene(sceneId, skipHistory = false) {
     currentScene = sceneId;
     const scene = gameData[sceneId];
     if (!scene) return;
     const display = document.getElementById('main-display');
     const choicesArea = document.getElementById('choices-area');
 
-    if (sceneId !== 'start' || historyLog.length > 0) {
+    if (!skipHistory && (sceneId !== 'start' || historyLog.length > 0)) {
         historyLog.push({ scene: scene, choice: null });
     }
 
@@ -1514,10 +1533,6 @@ function renderScene(sceneId) {
     });
 
     autoSave();
-
-    setTimeout(() => {
-        display.scrollTop = display.scrollHeight;
-    }, 100);
 }
 
 function startTyping(text, callback) {
@@ -1574,6 +1589,11 @@ function showChoices(choices) {
         btn.onclick = () => makeChoice(choice, prefix);
         area.appendChild(btn);
     });
+
+    const currentBlock = document.getElementById('current-block');
+    if (currentBlock) {
+        currentBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 function makeChoice(choice, prefix) {
@@ -1608,7 +1628,9 @@ function makeChoice(choice, prefix) {
         historyLog = [];
         currentScene = 'start';
         document.getElementById('main-display').innerHTML = '';
+        document.getElementById('start-screen').classList.remove('hidden');
         updateStartScreen();
+        return;
     }
 
     setTimeout(() => {
@@ -1761,6 +1783,10 @@ function openMenu(type) {
 function closeMenu(e) {
     if (e && e.target !== e.currentTarget) return;
     document.getElementById('menu-overlay').classList.remove('active');
+    // 若游戏尚未开始（仍在首页），关闭菜单后恢复首页
+    if (historyLog.length === 0 && document.getElementById('main-display').innerHTML.trim() === '') {
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
 }
 
 function renderSaveSlots(container, mode) {
@@ -1849,7 +1875,8 @@ function loadGameData(data) {
         document.getElementById('main-display').appendChild(div);
     });
 
-    renderScene(data.scene);
+    renderScene(data.scene, true);
+    document.getElementById('start-screen').classList.add('hidden');
 }
 
 function autoSave() {
@@ -1910,6 +1937,20 @@ document.addEventListener('keydown', (e) => {
     }
     if (isTyping && (e.key === 'Enter' || e.key === ' ')) {
         e.preventDefault();
+        clearInterval(typingTimer);
+        const el = document.getElementById('typing-text');
+        if (el) el.innerHTML = currentText.replace(/\n/g, '<br>');
+        isTyping = false;
+        const scene = gameData[currentScene];
+        if (scene && scene.choices) showChoices(scene.choices);
+        if (scene && scene.isEnding) checkAndUnlockEnding(currentScene);
+    }
+});
+
+// 移动端：点击文字区域跳过打字机
+document.getElementById('main-display').addEventListener('click', (e) => {
+    if (isTyping) {
+        e.stopPropagation();
         clearInterval(typingTimer);
         const el = document.getElementById('typing-text');
         if (el) el.innerHTML = currentText.replace(/\n/g, '<br>');
